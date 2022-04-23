@@ -2,6 +2,9 @@
 
 
 #include "BrickActor.h"
+#include "BreakoutGameState.h"
+#include "BreakoutBall.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 ABrickActor::ABrickActor()
@@ -13,9 +16,7 @@ ABrickActor::ABrickActor()
 	BrickMeshComponent->SetupAttachment(RootComponent);
 
 	BrickBoxComponent = CreateDefaultSubobject<UBoxComponent>(TEXT("Brich Collider"));
-	BrickBoxComponent->SetupAttachment(BrickBoxComponent);
-
-	BrickBoxComponent->OnComponentBeginOverlap.AddDynamic(this, &ABrickActor::OnBoxColliderOverlap);
+	BrickBoxComponent->SetupAttachment(BrickMeshComponent);
 
 }
 
@@ -23,7 +24,10 @@ ABrickActor::ABrickActor()
 void ABrickActor::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	HitSound.LoadSynchronous();
+	BreakSound.LoadSynchronous();
+	HitParticleFX.LoadSynchronous();
+	BreakParticleFX.LoadSynchronous();
 }
 
 // Called every frame
@@ -33,8 +37,58 @@ void ABrickActor::Tick(float DeltaTime)
 
 }
 
-void ABrickActor::OnBoxColliderOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void ABrickActor::OnBoxColliderHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
+	if (OtherActor->IsA(ABreakoutBall::StaticClass()))
+	{
+		UGameplayStatics::PlaySound2D(GetWorld(), HitSound.LoadSynchronous());
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitParticleFX.LoadSynchronous(), OtherActor->GetActorTransform());
 
+		HitsToBreak--;
+
+		UGameplayStatics::PlaySound2D(this, HitSound.Get());
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitParticleFX.Get(), OtherActor->GetActorTransform());
+
+		if (HitsToBreak == 0)
+		{
+			GameState = Cast<ABreakoutGameState>(GetWorld()->GetGameState());
+
+			if (IsValid(GameState))
+			{
+				GameState->DestroyBrickId(BrickId);
+			}
+		}
+		
+		NormalImpulse.X += FMath::RandRange(-150.0f, 150.0f);
+		NormalImpulse.Z = -150.0f;
+		NormalImpulse.Y = 0.0f;
+
+		ABreakoutBall* Ball = Cast<ABreakoutBall>(OtherActor);
+
+		if (IsValid(Ball))
+		{
+			Ball->SetNewConstVelocity(NormalImpulse);
+
+			if (bModifyVelocityOnHit)
+			{
+				Ball->SetVelocityMultiplier(BallSpeedModifier);
+			}
+		}
+	}
+}
+
+void ABrickActor::DestroyBrick()
+{
+	UGameplayStatics::PlaySound2D(GetWorld(), BreakSound.Get());
+	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BreakParticleFX.Get(), GetActorTransform());
+
+	Destroy();
+}
+
+void ABrickActor::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	BrickBoxComponent->OnComponentHit.AddDynamic(this, &ABrickActor::OnBoxColliderHit);
 }
 

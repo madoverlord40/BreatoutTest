@@ -3,18 +3,24 @@
 
 #include "BreakoutPlayerController.h"
 #include "BreakoutHUD.h"
+#include "BreakoutGameState.h"
 
 void ABreakoutPlayerController::OnPossess(APawn* aPawn)
 {
+	Super::OnPossess(aPawn);
+	PaddlePawn = Cast<AGamePaddlePawn>(aPawn);
 
+	GameState = GetWorld()->GetGameState<ABreakoutGameState>();
 }
 
 void ABreakoutPlayerController::OnUnPossess()
 {
+	Super::OnUnPossess();
 
+	PaddlePawn = nullptr;
 }
 
-bool ABreakoutPlayerController::ShowTitleWidget()
+bool ABreakoutPlayerController::ShowTitleWidget(bool show)
 {
 	if (IsValid(MyHUD))
 	{
@@ -22,14 +28,14 @@ bool ABreakoutPlayerController::ShowTitleWidget()
 
 		if (IsValid(HUD))
 		{
-			return HUD->ShowTitleWidget();
+			return HUD->ShowTitleWidget(show);
 		}
 	}
 
 	return false;
 }
 
-bool ABreakoutPlayerController::ShowGameOverWidget()
+bool ABreakoutPlayerController::ShowGameOverWidget(bool show)
 {
 	if (IsValid(MyHUD))
 	{
@@ -37,14 +43,14 @@ bool ABreakoutPlayerController::ShowGameOverWidget()
 
 		if (IsValid(HUD))
 		{
-			return HUD->ShowGameOverWidget();
+			return HUD->ShowGameOverWidget(show);
 		}
 	}
 
 	return false;
 }
 
-bool ABreakoutPlayerController::ShowGameWidget()
+bool ABreakoutPlayerController::ShowGameWidget(bool show)
 {
 	if (IsValid(MyHUD))
 	{
@@ -52,7 +58,7 @@ bool ABreakoutPlayerController::ShowGameWidget()
 
 		if (IsValid(HUD))
 		{
-			return HUD->ShowGameWidget();
+			return HUD->ShowGameWidget(show);
 		}
 	}
 
@@ -85,14 +91,86 @@ bool ABreakoutPlayerController::PauseBreakout()
 	return false;
 }
 
+void ABreakoutPlayerController::OnInputMoveHorizontal(const float delta)
+{
+	if (IsValid(GameState) && IsValid(PaddlePawn))
+	{
+		if (GameState->GetCurrentState() == EGameFlowStates::EGAME_FLOW_STATE_IN_GAME)
+		{
+			const FVector Direction = FVector::ForwardVector;
+
+			PaddlePawn->AddMovementInput(Direction, delta);
+		}
+	}
+}
+
+
+
+bool ABreakoutPlayerController::SpawnAndLaunchBall()
+{
+	if (IsValid(PaddlePawn))
+	{
+		return PaddlePawn->CreateAndLaunchBall();
+	}
+
+	return false;
+}
+
+void ABreakoutPlayerController::StartGame()
+{
+	if (IsValid(GameState) && IsValid(PaddlePawn))
+	{
+		GameState->StartNewGame();
+		EnableInput(this);
+	}
+}
+
+void ABreakoutPlayerController::QuitGame()
+{
+	if (IsValid(GameState) && IsValid(PaddlePawn))
+	{
+		PaddlePawn->DestroyBall();
+		GameState->ExitGamePlay();
+	}
+}
+
+void ABreakoutPlayerController::ResumeGame()
+{
+	if (IsValid(GameState) && IsValid(PaddlePawn) && bIsGamePaused)
+	{
+		GameState->ResumeGamePlay();
+	}
+}
+
+void ABreakoutPlayerController::OnInputLaunch()
+{
+	if (IsValid(GameState) && IsValid(PaddlePawn))
+	{
+		if (GameState->GetCurrentState() == EGameFlowStates::EGAME_FLOW_STATE_IN_GAME)
+		{
+			GameState->LaunchBreakoutBall();
+		}
+	}
+}
+
+void ABreakoutPlayerController::OnInputPauseGame()
+{
+	if (IsValid(GameState))
+	{	
+		EGameFlowStates CurrentState = GameState->GetCurrentState();
+
+		if (CurrentState == EGameFlowStates::EGAME_FLOW_STATE_IN_GAME )
+		{
+			GameState->PauseGamePlay();
+		}
+		else if (CurrentState == EGameFlowStates::EGAME_FLOW_STATE_GAME_PAUSED)
+		{
+			GameState->ResumeGamePlay();
+		}
+	}
+}
+
 void ABreakoutPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-
-}
-
-void ABreakoutPlayerController::SetupInputComponent()
-{
-	Super::SetupInputComponent();
-
 }

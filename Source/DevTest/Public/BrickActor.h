@@ -7,7 +7,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/BoxComponent.h"
 #include "Sound/SoundCue.h"
-#include "Particles/ParticleEmitter.h"
+#include "Particles/ParticleSystem.h"
 #include "BrickActor.generated.h"
 
 /*
@@ -34,25 +34,32 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	UFUNCTION()
-	void OnBoxColliderOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	void OnBoxColliderHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
-	void SetBrickID(const FString& Id);
+	void SetBrickID(const FString& Id) { BrickId = Id; }
 
 	const FString GetBrickId() const { return BrickId; }
 
+	void DestroyBrick();
+
+	virtual void PostInitializeComponents() override;
+
 protected:
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* BrickMeshComponent;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UBoxComponent* BrickBoxComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration")
 	int32 HitsToBreak = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration")
-	FLinearColor MaterialColor;
+	uint8 bModifyVelocityOnHit : 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration")
+	float BallSpeedModifier;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration")
 	TSoftObjectPtr<USoundCue> HitSound;
@@ -61,12 +68,15 @@ protected:
 	TSoftObjectPtr<USoundCue> BreakSound;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration")
-	TSoftObjectPtr<UParticleEmitter> HitParticleFX;
+	TSoftObjectPtr<UParticleSystem> HitParticleFX;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration")
-	TSoftObjectPtr<UParticleEmitter> BreakParticleFX;
+	TSoftObjectPtr<UParticleSystem> BreakParticleFX;
 
 	UPROPERTY(BlueprintReadOnly, Category = "BrickId")
 	FString BrickId;
+
+	UPROPERTY(BlueprintReadOnly, Category = "BrickId")
+	class ABreakoutGameState* GameState;
 
 };

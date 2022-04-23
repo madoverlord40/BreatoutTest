@@ -5,6 +5,8 @@
 
 void ABreakoutHUD::PostInitializeComponents()
 {
+	Super::PostInitializeComponents();
+
 	GameWidgetClass.LoadSynchronous();
 	MainMenuWidgetClass.LoadSynchronous();
 	GameOverWidgetClass.LoadSynchronous();
